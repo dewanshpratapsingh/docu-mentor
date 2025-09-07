@@ -50,16 +50,7 @@ uvicorn src.server:app --reload
 
 ## 📡 API Endpoints
 
-### 1️⃣ Health Check
-```http
-GET /ping
-```
-**Response:**
-```json
-{ "status": "ok" }
-```
-
-### 2️⃣ Ask Question
+### 1 Ask Question
 ```http
 POST /ask
 ```
