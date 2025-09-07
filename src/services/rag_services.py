@@ -1,0 +1,57 @@
+import os
+from langchain_huggingface import HuggingFaceEndpoint, HuggingFaceEndpointEmbeddings
+from langchain_community.vectorstores.faiss import FAISS
+from langchain_community.document_loaders import TextLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.prompts import ChatPromptTemplate
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_retrieval_chain
+
+rag_chain = None
+
+def initialize_chain():
+    global rag_chain
+    print("🚀 Initializing AI chain...")
+
+    hf_token = os.getenv("HUGGING_FACE_HUB_API_TOKEN")
+
+    loader = TextLoader("knowledge.txt")
+    docs = loader.load()
+
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    split_docs = text_splitter.split_documents(docs)
+
+    embeddings = HuggingFaceEndpointEmbeddings(
+        repo_id="sentence-transformers/all-MiniLM-L6-v2", 
+        hugging_face_api_key=hf_token
+    )
+
+    vector_store = FAISS.from_documents(split_docs, embeddings)
+    retriever = vector_store.as_retriever()
+
+    llm = HuggingFaceEndpoint(
+        repo_id="mistralai/Mistral-7B-Instruct-v0.2",
+        temperature=0.7,
+        max_new_tokens=512,
+        huggingface_api_token=hf_token
+    )
+
+    prompt = ChatPromptTemplate.from_template("""
+    Answer the user's question based only on the following context:
+    <context>{context}</context>
+    Question: {input}
+    """)
+
+    document_chain = create_stuff_documents_chain(llm, prompt)
+    rag_chain = create_retrieval_chain(retriever, document_chain)
+
+    print("✅ AI chain initialized successfully.")
+
+async def ask_question(question: str) -> str:
+    if not rag_chain:
+        raise RuntimeError("Chain not initialized.")
+
+    print(f"❓ Processing question: {question}")
+    response = await rag_chain.ainvoke({"input": question})
+
+    return response.get("answer", "Sorry, I couldn't find an answer.")
