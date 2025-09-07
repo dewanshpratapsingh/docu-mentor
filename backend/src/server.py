@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from src.routes import api
+# --- Use the full 'src.' path for imports ---
+from src.routes.api import router as api_router
 from src.services.rag_service import initialize_chain
 
 load_dotenv()
@@ -24,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api.router, prefix="/api")
+app.include_router(api_router, prefix="/api")
 
 @app.get("/")
 def read_root():
